@@ -1,22 +1,24 @@
 #!/bin/bash
 set -e
-echo "=== [Magento Deployment Started] ==="
 
-cd /var/www/magento2
+echo ">>> Setting permissions..."
+chown -R www-data:www-data /var/www/html/magento/
+chmod -R 775 /var/www/html/magento/
 
-echo "-> Setting permissions..."
-sudo chown -R www-data:www-data /var/www/magento2
-sudo chmod -R 775 /var/www/magento2
+echo ">>> Running Magento upgrade..."
+sudo -u www-data php /var/www/html/magento/bin/magento setup:upgrade
 
-echo "-> Running Magento setup..."
-sudo -u www-data php bin/magento setup:upgrade
-sudo -u www-data php bin/magento setup:di:compile
-sudo -u www-data php bin/magento setup:static-content:deploy -f
+echo ">>> Compiling DI..."
+sudo -u www-data php /var/www/html/magento/bin/magento setup:di:compile
 
-echo "-> Flushing cache..."
-sudo -u www-data php bin/magento cache:flush
+echo ">>> Deploying static content..."
+sudo -u www-data php /var/www/html/magento/bin/magento setup:static-content:deploy -f
 
-echo "-> Restarting Nginx..."
-sudo systemctl restart nginx
+echo ">>> Flushing cache..."
+sudo -u www-data php /var/www/html/magento/bin/magento cache:flush
 
-echo "=== [Magento Deployment Completed Successfully] ==="
+echo ">>> Restarting services..."
+systemctl restart nginx
+systemctl restart php8.1-fpm || true
+
+echo ">>> Deployment completed successfully."
