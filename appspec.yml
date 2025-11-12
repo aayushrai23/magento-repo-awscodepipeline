@@ -1,6 +1,5 @@
 version: 0.0
 os: linux
-
 files:
   - source: /
     destination: /var/www/magento2
@@ -9,10 +8,9 @@ files:
 hooks:
   BeforeInstall:
     - location: scripts/cleanup.sh
-      timeout: 300
+      timeout: 600
       runas: root
-
   AfterInstall:
     - location: scripts/deploy.sh
-      timeout: 900
+      timeout: 1200
       runas: root

@@ -1,1 +1,0 @@
-/var/www/magento2/lib/web/jquery/ui-modules/widgets/checkboxradio.js
