@@ -22,24 +22,27 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      # 3️⃣ Create deployment archive (SAFE)
+      # 3️⃣ Create Magento deployment archive (SAFE for CI)
       - name: Create Magento archive
         run: |
-          tar --exclude=.git \
-              --exclude=.github \
-              --exclude=var \
-              --exclude=pub/media \
-              --exclude=pub/static \
-              --exclude=vendor \
-              -czf magento.tar.gz .
+          tar \
+            --ignore-failed-read \
+            --warning=no-file-changed \
+            --exclude=.git \
+            --exclude=.github \
+            --exclude=var \
+            --exclude=pub/media \
+            --exclude=pub/static \
+            --exclude=vendor \
+            -czf magento.tar.gz .
 
       # 4️⃣ Upload archive to EC2
-      - name: Upload archive
+      - name: Upload archive to EC2
         run: |
           scp magento.tar.gz \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/magento.tar.gz
 
-      # 5️⃣ Extract & deploy on EC2 (WITH SUDO)
+      # 5️⃣ Extract, fix permissions & deploy
       - name: Deploy on EC2
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
