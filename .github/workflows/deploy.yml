@@ -30,21 +30,25 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      # 4️⃣ Sync Magento code to EC2
+      # 4️⃣ Sync Magento code to EC2 (SAFE RSYNC)
       - name: Sync code to EC2
         run: |
-          rsync -avz --delete \
+          rsync -avz \
             --exclude=".git" \
             --exclude=".github" \
+            --exclude="var/*" \
+            --exclude="pub/media/*" \
+            --exclude="pub/static/*" \
+            --exclude="vendor/*" \
             ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/magento2/
 
-      # 5️⃣ Run Magento post-deploy commands
-      - name: Run Magento commands
+      # 5️⃣ Fix permissions & run Magento commands
+      - name: Post-deploy Magento commands
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd /var/www/magento2
+            sudo chown -R www-data:www-data /var/www/magento2
 
-            sudo chown -R www-data:www-data .
+            cd /var/www/magento2
 
             sudo -u www-data php bin/magento setup:upgrade
             sudo -u www-data php bin/magento cache:flush
