@@ -1,0 +1,50 @@
+name: Magento Deploy (GitHub Actions → EC2)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Sync code to EC2
+        run: |
+          rsync -avz --delete \
+            --exclude=".git" \
+            --exclude=".github" \
+            ./ \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/magento2/
+
+      - name: Magento deploy commands
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd /var/www/magento2
+
+            echo "Fix permissions"
+            sudo chown -R www-data:www-data .
+
+            echo "Magento upgrade"
+            sudo -u www-data php bin/magento setup:upgrade
+
+            echo "Compile DI"
+            sudo -u www-data php bin/magento setup:di:compile
+
+            echo "Deploy static content"
+            sudo -u www-data php bin/magento setup:static-content:deploy -f
+
+            echo "Flush cache"
+            sudo -u www-data php bin/magento cache:flush
+          EOF
