@@ -1,4 +1,4 @@
-name: Deploy Magento to EC2 (Tar over SSH)
+name: Deploy Magento to EC2 (Direct SSH)
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -22,8 +22,8 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      # 3️⃣ Create Magento deployment archive (SAFE for CI)
-      - name: Create Magento archive
+      # 3️⃣ Create Magento archive (CI-safe)
+      - name: Create deployment archive
         run: |
           tar \
             --ignore-failed-read \
@@ -42,7 +42,7 @@ jobs:
           scp magento.tar.gz \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/magento.tar.gz
 
-      # 5️⃣ Extract, fix permissions & deploy
+      # 5️⃣ Deploy & run Magento commands
       - name: Deploy on EC2
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
@@ -52,14 +52,12 @@ jobs:
             sudo tar -xzf /tmp/magento.tar.gz -C /var/www/magento2
 
             sudo chown -R www-data:www-data /var/www/magento2
-
             cd /var/www/magento2
 
             sudo -u www-data php bin/magento setup:upgrade
-            sudo -u www-data php bin/magento cache:flush
             sudo -u www-data php bin/magento indexer:reindex
+            sudo -u www-data php bin/magento cache:flush
 
             sudo systemctl reload nginx
-
             rm -f /tmp/magento.tar.gz
           EOF
